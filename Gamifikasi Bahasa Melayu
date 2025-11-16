@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RPG Kata Kerja Tahun 5</title>
+
+<style>
+    body {
+        margin: 0;
+        background: #daf0ff;
+        font-family: "Poppins", sans-serif;
+        overflow: hidden;
+    }
+
+    #gameCanvas {
+        background: linear-gradient(#a3d5ff, #72b5ff);
+        display: block;
+        margin: auto;
+    }
+
+    #uiBox {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(255, 255, 255, 0.9);
+        padding: 14px 22px;
+        border-radius: 14px;
+        font-size: 16px;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        display: none;
+    }
+
+    #questionBox {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        width: 90%;
+        max-width: 420px;
+        transform: translate(-50%,-50%);
+        background: white;
+        padding: 20px;
+        border-radius: 14px;
+        display: none;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+        animation: pop 0.25s ease;
+    }
+
+    @keyframes pop {
+        0% { transform: translate(-50%,-50%) scale(0.7); }
+        100% { transform: translate(-50%,-50%) scale(1); }
+    }
+
+    .btn {
+        background: #1f77ff;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 10px;
+        border: none;
+        cursor: pointer;
+        font-weight: bold;
+        margin-top: 10px;
+        width: 100%;
+    }
+
+    .choiceBtn {
+        background: #ececec;
+        padding: 10px;
+        border-radius: 10px;
+        margin: 6px 0;
+        cursor: pointer;
+        border: 2px solid transparent;
+    }
+    .choiceBtn:hover {
+        border: 2px solid #1f77ff;
+        background: #e0edff;
+    }
+</style>
+</head>
+
+<body>
+
+<canvas id="gameCanvas" width="920" height="480"></canvas>
+
+<div id="uiBox">Tekan <b>Space</b> untuk jawab soalan</div>
+
+<div id="questionBox">
+    <h3 id="qText"></h3>
+    <div id="choices"></div>
+    <button class="btn" onclick="closeQuestion()">Tutup</button>
+</div>
+
+<script>
+/* ============================
+      RPG GAME ENGINE SIMPLE
+   ============================ */
+
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+// PLAYER
+let player = {
+    x: 80,
+    y: 350,
+    width: 40,
+    height: 60,
+    speed: 4
+};
+
+let keys = {};
+document.addEventListener("keydown", e => (keys[e.key] = true));
+document.addEventListener("keyup", e => (keys[e.key] = false));
+
+// NPC location
+let npc = { x: 500, y: 340, width: 50, height: 70 };
+
+// QUESTION BANK
+const bank = {
+    easy: [
+        { q: "Ali _____ buku.", c: ["membaca", "berlari"], a: 0 },
+        { q: "Kucing itu _____.", c: ["melompat", "makan nasi"], a: 0 }
+    ],
+    medium: [
+        { q: "Siti memotong _____.", c: ["kek", "lari"], a: 0 },
+        { q: "Ayah menulis _____", c: ["surat", "pergi"], a: 0 }
+    ],
+    hard: [
+        { q: "Ayat manakah yang mengandungi kata kerja transitif?", c: ["Ali makan nasi.", "Ali tidur."], a: 0 },
+        { q: "Ayat manakah tak transitif?", c: ["Kucing tidur.", "Siti memotong kek."], a: 0 }
+    ]
+};
+
+let stage = "easy";
+
+// MAIN LOOP
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+function update() {
+    if (keys["ArrowRight"]) player.x += player.speed;
+    if (keys["ArrowLeft"]) player.x -= player.speed;
+
+    if (player.x < 0) player.x = 0;
+    if (player.x > canvas.width - player.width)
+        player.x = canvas.width - player.width;
+
+    if (
+        player.x + player.width > npc.x - 20 &&
+        player.x < npc.x + npc.width + 20
+    ) {
+        document.getElementById("uiBox").style.display = "block";
+        if (keys[" "]) openQuestion();
+    } else {
+        document.getElementById("uiBox").style.display = "none";
+    }
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "#7dd87d";
+    ctx.fillRect(0, 420, canvas.width, 80);
+
+    ctx.fillStyle = "#1f6feb";
+    ctx.fillRect(player.x, player.y, player.width, player.height);
+
+    ctx.fillStyle = "orange";
+    ctx.fillRect(npc.x, npc.y, npc.width, npc.height);
+
+    ctx.fillStyle = "black";
+    ctx.font = "16px Poppins";
+    ctx.fillText("Tahap: " + stage.toUpperCase(), 20, 30);
+}
+
+// QUESTION SYSTEM
+function openQuestion() {
+    let qset = bank[stage];
+    let q = qset[Math.floor(Math.random() * qset.length)];
+
+    document.getElementById("qText").innerText = q.q;
+
+    let ch = document.getElementById("choices");
+    ch.innerHTML = "";
+
+    q.c.forEach((choice, i) => {
+        let btn = document.createElement("div");
+        btn.className = "choiceBtn";
+        btn.innerText = choice;
+        btn.onclick = () => checkAnswer(i, q.a);
+        ch.appendChild(btn);
+    });
+
+    document.getElementById("questionBox").style.display = "block";
+}
+
+function checkAnswer(i, correct) {
+    if (i === correct) {
+        alert("Betul! Tahniah!");
+        if (stage === "easy") stage = "medium";
+        else if (stage === "medium") stage = "hard";
+        else alert("Anda telah tamat semua tahap!");
+    } else {
+        alert("Salah, cuba lagi!");
+    }
+
+    closeQuestion();
+}
+
+function closeQuestion() {
+    document.getElementById("questionBox").style.display = "none";
+}
+
+gameLoop();
+</script>
+
+</body>
+</html>
+
